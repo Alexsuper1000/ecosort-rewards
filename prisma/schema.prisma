@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          String    @default("USUARIO_BASICO") // SUPER_ADMIN, ADMIN_INTERNO, CLIENTE_INSTITUCIONAL, PARTNER, USUARIO_BASICO
+  companyId     String?
+  company       Company?  @relation(fields: [companyId], references: [id])
+  events        RecyclingEvent[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?
+  access_token       String?
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Company {
+  id          String    @id @default(cuid())
+  name        String
+  type        String    @default("CLIENT") // CLIENT, PARTNER
+  users       User[]
+  locations   Location[]
+  rewards     Reward[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Location {
+  id          String    @id @default(cuid())
+  name        String
+  address     String
+  companyId   String?
+  company     Company?  @relation(fields: [companyId], references: [id])
+  machines    Machine[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Machine {
+  id            String    @id @default(cuid())
+  serialNumber  String    @unique
+  status        String    @default("ACTIVE") // ACTIVE, MAINTENANCE, INACTIVE
+  locationId    String?
+  location      Location? @relation(fields: [locationId], references: [id])
+  events        RecyclingEvent[]
+  capacity      Int       @default(100) // Percentage
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model RecyclingEvent {
+  id            String    @id @default(cuid())
+  userId        String?
+  user          User?     @relation(fields: [userId], references: [id])
+  machineId     String
+  machine       Machine   @relation(fields: [machineId], references: [id])
+  materialType  String    // PLASTIC, CAN, GLASS
+  weight        Float     // in kg
+  pointsEarned  Int       @default(0)
+  createdAt     DateTime  @default(now())
+}
+
+model Reward {
+  id            String    @id @default(cuid())
+  title         String
+  description   String
+  pointsRequired Int
+  stock         Int       @default(0)
+  active        Boolean   @default(true)
+  companyId     String?
+  company       Company?  @relation(fields: [companyId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Lead {
+  id            String    @id @default(cuid())
+  name          String
+  email         String
+  company       String?
+  message       String?
+  status        String    @default("NEW") // NEW, CONTACTED, CLOSED
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
